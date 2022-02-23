@@ -1,0 +1,98 @@
+---
+apiVersion: v1
+kind: Service
+metadata:
+  namespace: power
+  name: influxdb
+  labels:
+    component: influxdb
+    app: influxdb
+spec:
+  clusterIP: None
+  ports:
+  - port: 8086
+    name: server
+  selector:
+    component: influxdb
+  publishNotReadyAddresses: true
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  namespace: power
+  name: influxdb
+  labels:
+    component: influxdb
+    app: influxdb
+spec:
+  serviceName: influxdb
+  selector:
+    matchLabels:
+      component: influxdb
+  replicas: 1
+  template:
+    metadata:
+      name: influxdb
+      labels:
+        component: influxdb
+        app: influxdb
+    spec:
+      containers:
+      - name: influxdb
+        image: docker.io/influxdb:1.7
+        imagePullPolicy: IfNotPresent
+        livenessProbe:
+          failureThreshold: 3
+          httpGet:
+            path: /health
+            port: api
+            scheme: HTTP
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 5
+        name: influxdb-demo
+        ports:
+          - containerPort: 9999
+            name: api
+            protocol: TCP
+        readinessProbe:
+          failureThreshold: 3
+          httpGet:
+            path: /health
+            port: api
+            scheme: HTTP
+          initialDelaySeconds: 5
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 1
+        env:
+          - name: INFLUXDB_IFQL_ENABLED
+            value: "true"
+          - name: INFLUXDB_LOGGING_LEVEL
+            value: "error"
+          - name: INFLUXDB_HTTP_LOG_ENABLED
+            value: "false"
+          - name: MONITOR_RP
+            value: "monthly"
+          - name: MONITOR_DATABASE
+            value: "monitor"
+        volumeMounts:
+          - name: data
+            mountPath: /var/lib/influxdb
+        ports:
+          - containerPort: 8086
+            name: server
+          - containerPort: 8082
+            name: ifql
+  volumeClaimTemplates:
+  - metadata:
+      namespace: power
+      name: data
+    spec:
+      accessModes:
+        - "ReadWriteOnce"
+      resources:
+        requests:
+          storage: 10Gi
+---
