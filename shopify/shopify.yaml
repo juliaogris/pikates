@@ -1,0 +1,69 @@
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: shopify
+---
+apiVersion: v1
+kind: Service
+metadata:
+  namespace: shopify
+  name: shopify
+spec:
+  selector:
+    app: shopify
+  ports:
+    - name: http
+      port: 8080
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  namespace: shopify
+  name: shopify
+  labels:
+    app: shopify
+spec:
+  selector:
+    matchLabels:
+      app: shopify
+  template:
+    metadata:
+      labels:
+        app: shopify
+    spec:
+      containers:
+        - name: shopify
+          image: julia/shopify:v0.0.15
+          ports:
+            - name: http
+              protocol: TCP
+              containerPort: 8080
+          env:
+            - name: SHOPIFY_BASE_URL
+              value: "https://shopify.jul.run"
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  namespace: shopify
+  name: shopify-julrun
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt
+    traefik.ingress.kubernetes.io/router.entrypoints: https
+spec:
+  tls:
+    - hosts:
+      - shopify.jul.run
+      secretName: shopify-julrun-https-cert
+  rules:
+    - host: shopify.jul.run
+      http:
+        paths:
+          - pathType: Prefix
+            path: /
+            backend:
+              service:
+                name: shopify
+                port:
+                  name: http
