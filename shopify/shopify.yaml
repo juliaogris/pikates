@@ -34,7 +34,7 @@ spec:
     spec:
       containers:
         - name: shopify
-          image: julia/shopify:v0.0.15
+          image: julia/shopify:v0.0.16
           ports:
             - name: http
               protocol: TCP
